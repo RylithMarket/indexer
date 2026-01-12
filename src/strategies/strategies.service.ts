@@ -7,6 +7,7 @@ import {
   PositionInfo,
 } from './interfaces/defi-protocol.interface';
 import { CetusPositionStrategy } from './protocols/cetus/strategies/position.strategy';
+import { CoinStrategy } from './protocols/coin/coin.strategy';
 
 @Injectable()
 export class StrategiesService {
@@ -17,13 +18,14 @@ export class StrategiesService {
   constructor(
     private readonly configService: ConfigService<Config>,
     private readonly cetusPositionStrategy: CetusPositionStrategy,
+    private readonly coinStrategy: CoinStrategy,
   ) {
     const suiConfig = this.configService.get<Config['sui']>('sui');
     this.suiClient = new SuiClient({
       url: getFullnodeUrl(suiConfig?.network || 'testnet'),
     });
 
-    this.strategies = [this.cetusPositionStrategy];
+    this.strategies = [this.cetusPositionStrategy, this.coinStrategy];
   }
 
   findStrategy(type: string): (IValuableObject & { protocol: string }) | null {
