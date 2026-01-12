@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Vault {
+  id           String   @id
+  owner        String
+  name         String
+  description  String?
+  strategyType String
+  imgUrl       String?
+
+  tvl      Decimal @default(0)
+  apy      Decimal @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime
+  updatedAt DateTime @updatedAt
+
+  history VaultHistory[]
+
+  @@index([owner])
+  @@index([strategyType])
+  @@index([isActive])
+}
+
+model VaultHistory {
+  id      Int    @id @default(autoincrement())
+  vaultId String
+  vault   Vault  @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  tvl       Decimal
+  apy       Decimal
+  timestamp DateTime @default(now())
+
+  @@index([vaultId, timestamp])
+}
+
+model IndexerState {
+  id         String  @id @default("main")
+  lastCursor String?
+}

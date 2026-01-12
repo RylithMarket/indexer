@@ -1,0 +1,45 @@
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { VaultsService, FindAllVaultsOptions } from './vaults.service';
+
+@Controller('vaults')
+export class VaultsController {
+  constructor(private readonly vaultsService: VaultsService) {}
+
+  @Get()
+  findAll(
+    @Query('strategyType') strategyType?: string,
+    @Query('owner') owner?: string,
+    @Query('isActive') isActive?: string,
+    @Query('sortBy') sortBy?: 'tvl' | 'apy' | 'createdAt',
+    @Query('sortOrder') sortOrder?: 'asc' | 'desc',
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const options: FindAllVaultsOptions = {
+      strategyType,
+      owner,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      sortBy: sortBy || 'tvl',
+      sortOrder: sortOrder || 'desc',
+      limit: limit ? parseInt(limit, 10) : 50,
+      offset: offset ? parseInt(offset, 10) : 0,
+    };
+
+    return this.vaultsService.findAll(options);
+  }
+
+  @Get('stats')
+  getStats() {
+    return this.vaultsService.getVaultStats();
+  }
+
+  @Get('owner/:address')
+  getByOwner(@Param('address') address: string) {
+    return this.vaultsService.getVaultsByOwner(address);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.vaultsService.findOne(id);
+  }
+}
