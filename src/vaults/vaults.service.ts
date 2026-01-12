@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StrategiesService } from '../strategies/strategies.service';
 
 export interface FindAllVaultsOptions {
   strategyType?: string;
@@ -13,7 +14,10 @@ export interface FindAllVaultsOptions {
 
 @Injectable()
 export class VaultsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly strategiesService: StrategiesService,
+  ) {}
 
   async findAll(options: FindAllVaultsOptions = {}) {
     const {
@@ -62,16 +66,25 @@ export class VaultsService {
       throw new NotFoundException(`Vault with ID ${id} not found`);
     }
 
-    // Get last 30 history entries for chart
-    const history = await this.prisma.vaultHistory.findMany({
-      where: { vaultId: id },
-      orderBy: { timestamp: 'desc' },
-      take: 30,
-    });
+    const [history, positions] = await Promise.all([
+      this.prisma.vaultHistory.findMany({
+        where: { vaultId: id },
+        orderBy: { timestamp: 'desc' },
+        take: 30,
+      }),
+      this.strategiesService.getVaultPositions(id),
+    ]);
+
+    const calculatedTvl = (positions as typeof positions).reduce(
+      (sum, p) => sum + p.valueUsd,
+      0,
+    );
 
     return {
       ...vault,
-      history: history.reverse(), // Return in ascending order for charts
+      tvl: calculatedTvl,
+      history: (history as typeof history).reverse(),
+      positions,
     };
   }
 

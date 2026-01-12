@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { ContractsService } from '../contracts/contracts.service';
 import { VaultTVLService } from '../vaults/vault-tvl.service';
-import { Config } from '../config/configuration';
+import { Config, SuiConfig } from '../config/configuration';
 import { CoreModuleEnum, VaultEventEnum } from '../contracts/contracts.config';
 
 interface VaultCreatedEvent {
@@ -44,10 +42,17 @@ export class IndexerService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService<Config>,
-    private readonly contractsService: ContractsService,
     private readonly vaultTVLService: VaultTVLService,
   ) {
-    this.suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
+    const suiConfig = this.configService.get<SuiConfig>('sui');
+
+    if (!suiConfig) {
+      throw new Error('Sui configuration is missing');
+    }
+
+    this.suiClient = new SuiClient({
+      url: getFullnodeUrl(suiConfig.network),
+    });
     this.corePackageId = this.configService.get<string>('sui.corePackageId', {
       infer: true,
     })!;

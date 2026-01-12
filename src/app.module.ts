@@ -7,6 +7,8 @@ import { IndexerModule } from './indexer/indexer.module';
 import { VaultsModule } from './vaults/vaults.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ContractsModule } from './contracts/contracts.module';
+import { StrategiesModule } from './strategies/strategies.module';
+import { DefiLlamaModule } from './defillama/defillama.module';
 import configuration from './config/configuration';
 
 @Module({
@@ -20,6 +22,8 @@ import configuration from './config/configuration';
     IndexerModule,
     VaultsModule,
     PrismaModule,
+    StrategiesModule,
+    DefiLlamaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
