@@ -44,24 +44,45 @@ export class DefiLlamaService {
 
   private formatCoins(coins: string[] | string): string {
     const coinArray = Array.isArray(coins) ? coins : [coins];
-    return coinArray.map((coin) => this.mapCoinToCoingecko(coin)).join(',');
+    const allFormats: string[] = [];
+
+    for (const coin of coinArray) {
+      const formats = this.getAlternativeFormats(coin);
+      allFormats.push(...formats);
+    }
+
+    return allFormats.join(',');
   }
 
-  private mapCoinToCoingecko(coin: string): string {
-    // If already in coingecko format, return as is
+  private getAlternativeFormats(coin: string): string[] {
+    const formats: string[] = [];
+
+    if (coin.match(/^\w+:0x[a-fA-F0-9]/)) {
+      formats.push(coin);
+    }
+
     if (coin.startsWith('coingecko:')) {
-      return coin;
+      formats.push(coin);
+      return formats;
     }
 
-    // Extract coin symbol from Sui coin type (e.g., 0x1::sui::SUI -> SUI)
-    const parts = coin.split('::');
-    if (parts.length === 3) {
-      const symbol = parts[2];
-      return `coingecko:${symbol}`;
+    if (coin.includes('::')) {
+      if (coin.startsWith('sui:')) {
+        formats.push(coin);
+      }
+
+      const cleanCoin = coin.replace(/^sui:/, '');
+      const parts = cleanCoin.split('::');
+      if (parts.length === 3) {
+        const symbol = parts[2].toLowerCase();
+        formats.push(`coingecko:${symbol}`);
+      }
+
+      return formats;
     }
 
-    // Default format
-    return coin;
+    formats.push(coin);
+    return formats;
   }
 
   private buildParams(params: Record<string, unknown>): Record<string, string> {

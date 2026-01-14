@@ -25,8 +25,8 @@ export class CetusPositionStrategy implements IValuableObject {
     this.suiClient = new SuiClient({ url: getFullnodeUrl(suiConfig.network) });
   }
 
-  canHandle(): boolean {
-    return true;
+  canHandle(type: string): boolean {
+    return type.includes('::position::Position');
   }
 
   async calculatePrice(id: string): Promise<number> {

@@ -23,7 +23,6 @@ export class CoinStrategy implements IValuableObject {
   }
 
   canHandle(type: string): boolean {
-    // Match coin types like 0x2::coin::Coin<0x1::sui::SUI>
     return type.includes('::coin::Coin<');
   }
 
@@ -31,18 +30,16 @@ export class CoinStrategy implements IValuableObject {
     try {
       const obj = await this.suiClient.getObject({
         id,
-        options: { showContent: true },
+        options: { showContent: true, showType: true },
       });
 
       if (!obj.data?.content) return 0;
 
-      // Get coin amount
       const content = obj.data.content as any;
       const amount = content?.fields?.balance || 0;
+
       if (amount === 0) return 0;
 
-      // Extract coin type from object type
-      // Type: 0x2::coin::Coin<0x1::sui::SUI>
       const type = obj.data?.type || '';
       const coinTypeMatch = type.match(/Coin<([^>]+)>/);
       if (!coinTypeMatch) return 0;
@@ -53,13 +50,27 @@ export class CoinStrategy implements IValuableObject {
         10 ** decimals,
       ) as any as Decimal;
 
-      // Get price from DefiLlama
-      const coinIdA = `sui:${coinType}`;
+      const coinIds = [
+        `sui:${coinType}`,
+        `coingecko:${coinType.split('::')[2].toLowerCase()}`,
+      ];
       const prices = await this.defiLlamaService.getCurrentPrices({
-        coins: [coinIdA],
+        coins: coinIds,
       });
 
-      const price = prices?.coins[coinIdA]?.price || 0;
+      this.logger.debug('Fetched prices', prices);
+      if (!prices?.coins) return 0;
+
+      let price = 0;
+      for (const coinId of coinIds) {
+        if (prices.coins[coinId]?.price) {
+          price = prices.coins[coinId].price;
+          break;
+        }
+      }
+      this.logger.log(
+        `Coin price [${id}]: ${price}, amount: ${readableAmount.toNumber()}`,
+      );
       return readableAmount.mul(price).toNumber();
     } catch (error) {
       this.logger.error(`Error calculating coin price for ${id}: ${error}`);
