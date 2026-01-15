@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  OnApplicationBootstrap,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { StrategiesService } from '../strategies/strategies.service';
+import { VaultTVLProducer } from './vault-tvl.producer';
 
 export interface FindAllVaultsOptions {
   strategyType?: string;
@@ -13,11 +19,19 @@ export interface FindAllVaultsOptions {
 }
 
 @Injectable()
-export class VaultsService {
+export class VaultsService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(VaultsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly strategiesService: StrategiesService,
+    private readonly tvlProducer: VaultTVLProducer,
   ) {}
+
+  async onApplicationBootstrap() {
+    const result = await this.tvlProducer.syncAllVaultsTVL();
+    this.logger.log(`Enqueued ${result.enqueued} vaults for TVL sync`);
+  }
 
   async findAll(options: FindAllVaultsOptions = {}) {
     const {
@@ -93,7 +107,7 @@ export class VaultsService {
   }
 
   async getVaultStats() {
-    const [totalVaults, activeVaults, totalTVL] = await Promise.all([
+    const [totalVaults, activeVaults, totalTVLResult] = await Promise.all([
       this.prisma.vault.count(),
       this.prisma.vault.count({ where: { isActive: true } }),
       this.prisma.vault.aggregate({
@@ -105,7 +119,16 @@ export class VaultsService {
     return {
       totalVaults,
       activeVaults,
-      totalTVL: totalTVL._sum.tvl || 0,
+      totalTVL: totalTVLResult._sum.tvl || 0,
     };
+  }
+
+  async triggerVaultTVLSync(vaultId: string) {
+    await this.tvlProducer.enqueueSyncVaultTVL(vaultId);
+    return { vaultId, queued: true };
+  }
+
+  async syncAllVaultsTVL() {
+    return this.tvlProducer.syncAllVaultsTVL();
   }
 }

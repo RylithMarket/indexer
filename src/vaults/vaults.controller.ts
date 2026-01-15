@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post } from '@nestjs/common';
 import { VaultsService, FindAllVaultsOptions } from './vaults.service';
 
 @Controller('vaults')
@@ -36,6 +36,16 @@ export class VaultsController {
   @Get('owner/:address')
   getByOwner(@Param('address') address: string) {
     return this.vaultsService.getVaultsByOwner(address);
+  }
+
+  @Post('sync/:id')
+  syncVaultTVL(@Param('id') id: string) {
+    return this.vaultsService.triggerVaultTVLSync(id);
+  }
+
+  @Post('sync-all')
+  syncAllVaults() {
+    return this.vaultsService.syncAllVaultsTVL();
   }
 
   @Get(':id')

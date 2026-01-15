@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { VaultTVLService } from '../vaults/vault-tvl.service';
+import { VaultTVLProducer } from '../vaults/vault-tvl.producer';
 import { Config, SuiConfig } from '../config/configuration';
 import { CoreModuleEnum, VaultEventEnum } from '../contracts/contracts.config';
 
@@ -43,6 +44,7 @@ export class IndexerService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService<Config>,
     private readonly vaultTVLService: VaultTVLService,
+    private readonly tvlProducer: VaultTVLProducer,
   ) {
     const suiConfig = this.configService.get<SuiConfig>('sui');
 
@@ -183,16 +185,20 @@ export class IndexerService implements OnModuleInit {
         timestamp: new Date(parseInt(data.timestamp)),
       },
     });
+
+    await this.tvlProducer.enqueueSyncVaultTVL(data.id);
   }
 
   private async handleAssetDeposited(data: AssetDepositedEvent) {
     this.logger.log(`Asset deposited to vault: ${data.vault_id}`);
     await this.vaultTVLService.recalculateVaultTVL(data.vault_id);
+    await this.tvlProducer.enqueueSyncVaultTVL(data.vault_id);
   }
 
   private async handleAssetWithdrawn(data: AssetWithdrawnEvent) {
     this.logger.log(`Asset withdrawn from vault: ${data.vault_id}`);
     await this.vaultTVLService.recalculateVaultTVL(data.vault_id);
+    await this.tvlProducer.enqueueSyncVaultTVL(data.vault_id);
   }
 
   private async handleVaultDestroyed(data: VaultDestroyedEvent) {
